@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Where is the ISS?</title>
+<meta name="description" content="Live tracker showing which country the International Space Station is over right now, with a ground track of where it has been.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Where is the ISS?">
+<meta property="og:description" content="Live tracker showing which country the International Space Station is over right now, with a ground track of where it has been.">
+<meta property="og:url" content="https://davidcarroll.cloud/iss.html">
+<meta property="og:image" content="https://s3-upload-alerts.s3.us-east-1.amazonaws.com/site-images/isslinkedin.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://s3-upload-alerts.s3.us-east-1.amazonaws.com/site-images/isslinkedin.png">
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --line: #dde2e8;
+    --text: #1b2430;
+    --muted: #64707f;
+    --accent: #1d5fd1;
+    --live: #1f9d6b;
+    --err: #b3261e;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--bg); }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.4;
+  }
+  .wrap { max-width: 2200px; margin: 0 auto; padding: 22px 28px 14px; }
+
+  .pageTitle { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: .9rem; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 1px solid var(--line); font-weight: 500; }
+  .titleText { color: var(--text); font-weight: 650; }
+  .sep { width: 1px; height: 14px; background: var(--line); }
+  .backLink { color: var(--accent); text-decoration: none; font-weight: 500; white-space: nowrap; }
+  .backLink:hover { text-decoration: underline; }
+  .backLink::before { content: "\2190"; margin-right: 6px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+  .live .dot { background: var(--live); animation: pulse 2s ease-out infinite; }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(31, 157, 107, .5); }
+    100% { box-shadow: 0 0 0 10px rgba(31, 157, 107, 0); }
+  }
+  .status { margin-left: auto; font-size: .82rem; }
+  .status.error { color: var(--err); }
+
+  .headline { font-size: clamp(1.4rem, 2.6vw, 2.15rem); font-weight: 750; line-height: 1.08; letter-spacing: -0.02em; margin: 0 0 4px; }
+  .headline .place { color: var(--accent); }
+  .headline .place.err { color: var(--muted); }
+  .sub { color: var(--muted); font-size: 1rem; margin: 0; min-height: 1.4em; }
+
+  .stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    margin: 14px 0 0;
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  }
+  .stat { padding: 10px 20px 10px 0; }
+  .stat + .stat { padding-left: 20px; border-left: 1px solid var(--line); }
+  .stat .v { font-size: 1.4rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .stat .l { color: var(--muted); font-size: .85rem; }
+
+  .rawSection { margin-top: 14px; }
+  .rawSection h2 { font-size: .95rem; font-weight: 650; margin: 0 0 8px; }
+  .grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 6px; margin-bottom: 10px;
+  }
+  .grid h3 { grid-column: 1 / -1; font-size: .82rem; font-weight: 600; color: var(--accent); margin: 2px 0 0; }
+  .cell { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; min-width: 0; }
+  .cell .k { color: var(--muted); font-size: .7rem; line-height: 1.2; }
+  .cell .val { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+
+  .sparkle { animation: sparkle 1.1s ease-out; border-radius: 4px; }
+  @keyframes sparkle {
+    0%   { background: rgba(29, 95, 209, .30); box-shadow: 0 0 0 3px rgba(29, 95, 209, .30), 0 0 10px 2px rgba(29, 95, 209, .55); }
+    100% { background: transparent; box-shadow: 0 0 0 3px rgba(29, 95, 209, 0), 0 0 10px 2px rgba(29, 95, 209, 0); }
+  }
+
+  .layout { display: grid; grid-template-columns: clamp(210px, 17vw, 340px) 1fr clamp(340px, 25vw, 520px); gap: 24px; align-items: start; }
+  .main { min-width: 0; }
+  .trail { border-left: 1px solid var(--line); padding-left: 18px; min-width: 0; }
+  .trail h2 { font-size: .85rem; font-weight: 650; margin: 2px 0 8px; color: var(--muted); }
+  .trailList { display: flex; flex-direction: column; gap: 6px; }
+  .trailRow { display: grid; grid-template-columns: 1fr auto; column-gap: 12px; align-items: baseline; position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px 6px 22px; }
+  .trailRow::before { content: ""; position: absolute; left: 9px; top: 13px; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); opacity: .45; }
+  .trailRow .p { font-size: .85rem; font-weight: 600; overflow-wrap: anywhere; }
+  .trailRow .c { font-weight: 400; font-size: .72rem; color: var(--muted); margin-left: 8px; white-space: nowrap; }
+  .trailRow .l { grid-column: 1 / -1; font-size: .72rem; color: var(--muted); overflow-wrap: anywhere; }
+  .trailRow .l:empty { display: none; }
+  .trailRow .d { text-align: right; white-space: nowrap; font-size: .76rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .trailRow.current::before { background: var(--live); opacity: 1; animation: pulse 2s ease-out infinite; }
+
+
+  .crew { border-right: 1px solid var(--line); padding-right: 18px; min-width: 0; }
+  .crew h2 { font-size: .85rem; font-weight: 650; margin: 2px 0 2px; color: var(--muted); }
+  .crew .crewNote { font-size: .72rem; color: var(--muted); margin: 0 0 10px; }
+  .crewList { display: flex; flex-direction: column; gap: 8px; }
+  .crewCard { display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  .crewPic { flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--line); color: var(--muted); display: flex; align-items: center; justify-content: center; font-size: .8rem; font-weight: 650; object-fit: cover; object-position: 50% 20%; }
+  .crewName { font-size: .85rem; font-weight: 600; overflow-wrap: anywhere; }
+  .crewName a { color: inherit; text-decoration: none; }
+  .crewName a:hover { text-decoration: underline; }
+  .crewSub { font-size: .72rem; color: var(--muted); }
+  .crewMsg { font-size: .78rem; color: var(--muted); }
+
+  footer { color: var(--muted); font-size: .76rem; border-top: 1px solid var(--line); padding-top: 8px; }
+  footer a { color: var(--muted); }
+
+  /* Desktop: the page is at least the window tall (footer sits at the bottom); no inner scrolling, the page grows if the trail is longer. */
+  @media (min-width: 901px) {
+    .wrap { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+    .layout { flex: 1; align-items: stretch; }
+    footer { flex: none; margin-top: 10px; }
+  }
+
+  /* Wide screens: crew | main | ground track, with the four stats kept on one row. */
+  @media (min-width: 901px) {
+    .stat { padding: 10px 12px 10px 0; }
+    .stat + .stat { padding-left: 12px; }
+    .stat .v { font-size: 1.2rem; white-space: nowrap; }
+  }
+  /* Big screens: let the side panels and their text grow into the extra room. */
+  @media (min-width: 1500px) {
+    .stat .v { font-size: 1.45rem; }
+    .crewPic { width: 52px; height: 52px; font-size: .95rem; }
+    .crewCard { padding: 10px 12px; gap: 12px; }
+    .crewName { font-size: .98rem; }
+    .crewSub { font-size: .8rem; }
+    .crew h2, .trail h2 { font-size: .95rem; }
+    .trailRow { padding: 8px 12px 8px 24px; }
+    .trailRow .p { font-size: .95rem; }
+    .trailRow .c, .trailRow .l, .trailRow .d { font-size: .8rem; }
+  }
+  @media (min-width: 1240px) {
+    .stats { grid-template-columns: 1fr 1.3fr 1.5fr .9fr; }
+  }
+
+  /* Medium screens: no room for three columns, so the crew becomes a row of cards across the top. */
+  @media (min-width: 901px) and (max-width: 1239px) {
+    .layout { grid-template-columns: 1fr 340px; }
+    .crew { grid-column: 1 / -1; border-right: none; padding-right: 0; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+    .crewList { flex-direction: row; flex-wrap: wrap; }
+    .crewCard { width: 210px; }
+  }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .main { order: 1; } .crew { order: 2; } .trail { order: 3; }
+    .crew { border-right: none; border-top: 1px solid var(--line); padding-right: 0; padding-top: 14px; }
+    .trail { border-left: none; border-top: 1px solid var(--line); padding-left: 0; padding-top: 14px; }
+  }
+
+  @media (max-width: 640px) {
+    .stat, .stat + .stat { padding: 10px 0; border-left: none; }
+    .stat + .stat { border-top: 1px solid var(--line); }
+    .pageTitle { flex-wrap: wrap; }
+    .status { margin-left: 0; width: 100%; }
+    .sep { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .live .dot, .sparkle, .trailRow.current::before { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="pageTitle" id="pageTitle"><a class="backLink" href="/">davidcarroll.cloud</a><span class="sep"></span><span class="dot"></span><span class="titleText">Where is the ISS?</span><span class="status" id="status"></span></p>
+  <div class="layout">
+  <aside class="crew">
+    <h2 id="crewTitle">Aboard the ISS</h2>
+    <p class="crewNote">Who we believe is aboard right now.</p>
+    <div class="crewList" id="crewList"><div class="crewMsg">Loading crew…</div></div>
+  </aside>
+  <div class="main">
+  <h1 class="headline" id="headline">Locating the ISS…</h1>
+  <p class="sub" id="sub"></p>
+
+  <div class="stats">
+    <div class="stat"><div class="v" id="alt">–</div><div class="l">Altitude</div></div>
+    <div class="stat"><div class="v" id="vel">–</div><div class="l">Speed</div></div>
+    <div class="stat"><div class="v" id="coords">–</div><div class="l">Latitude, longitude</div></div>
+    <div class="stat"><div class="v" id="vis">–</div><div class="l">Lighting</div></div>
+  </div>
+
+  <section class="rawSection">
+    <h2>Raw data from the latest refresh</h2>
+    <div class="grid" id="grid-iss"></div>
+    <div class="grid" id="grid-geo"></div>
+  </section>
+  </div>
+
+  <aside class="trail">
+    <h2>Ground track</h2>
+    <div class="trailList" id="trailList"></div>
+  </aside>
+  </div>
+
+  <footer>
+    Position from <a href="https://wheretheiss.at">wheretheiss.at</a>, place names from
+    <a href="https://www.bigdatacloud.com">BigDataCloud</a>, crew list from <a href="http://open-notify.org">Open Notify</a>, crew photos from Wikipedia. Position refreshes every 3 seconds; the place name every 10 seconds.
+  </footer>
+</div>
+
+<script>
+const ISS_URL = "https://api.wheretheiss.at/v1/satellites/25544";
+const GEO_URL = "https://api.bigdatacloud.net/data/reverse-geocode";
+const GEO_KEY = "bdc_4f6f81906c1e4f688cb45b18c0873e5e";  // BigDataCloud free key (visible in page source)
+const REFRESH_MS = 3000;        // ISS position
+const GEO_EVERY_MS = 10000;     // place-name lookups (free quota is 50,000 per month)
+
+const $ = id => document.getElementById(id);
+function sparkle(el) {
+  el.classList.remove("sparkle");
+  void el.offsetWidth;            // restart the animation if it is already running
+  el.classList.add("sparkle");
+}
+function setText(el, text, flash = true) {
+  if (el.textContent === text) return;
+  const firstFill = !el.dataset.filled;
+  el.textContent = text;
+  el.dataset.filled = "1";
+  if (flash && !firstFill) sparkle(el);
+}
+
+const cells = {};  // "grid|key" -> {cell, val}, so values update in place
+function renderGrid(gridId, title, obj) {
+  const grid = $(gridId);
+  let h = grid.querySelector("h3");
+  if (!h) { h = document.createElement("h3"); grid.appendChild(h); }
+  h.textContent = title;
+
+  const seen = new Set();
+  for (const [k, v] of Object.entries(obj)) {
+    if (v !== null && typeof v === "object") continue;  // skip nested lists
+    const id = gridId + "|" + k;
+    seen.add(id);
+    let c = cells[id];
+    if (!c) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      const key = document.createElement("div");
+      key.className = "k";
+      key.textContent = k;
+      const val = document.createElement("div");
+      val.className = "val";
+      cell.append(key, val);
+      grid.appendChild(cell);
+      c = cells[id] = { cell, val };
+    }
+    setText(c.val, v === "" ? "(empty)" : String(v));
+  }
+  // Remove tiles for fields missing from this response, so stale values never linger.
+  for (const id of Object.keys(cells)) {
+    if (id.startsWith(gridId + "|") && !seen.has(id)) {
+      cells[id].cell.remove();
+      delete cells[id];
+    }
+  }
+}
+
+function placeName(geo) {
+  return geo.countryName || geo.locality || "the open ocean";
+}
+
+function setHeadline(name, isError) {
+  const h = $("headline");
+  const key = (isError ? "!" : "") + name;
+  if (h.dataset.place === key) return;
+  const changed = !!h.dataset.place;
+  h.dataset.place = key;
+  h.textContent = "";
+  const span = document.createElement("span");
+  span.className = "place" + (isError ? " err" : "");
+  span.textContent = name;
+  if (!isError) h.append("The ISS is over ");
+  h.appendChild(span);
+  if (changed) sparkle(span);
+}
+
+// ---- Place-name lookup: its own, slower clock ----
+let geoBusy = false, geoAt = 0, lastGeo = null, geoError = null, geoTime = "";
+
+function showPlace() {
+  if (geoError) {
+    setHeadline("Place lookup unavailable", true);
+    setText($("sub"), `BigDataCloud said: ${geoError}. Trying again in about 10 seconds.`);
+    renderGrid("grid-geo", "Reverse geocoder (last lookup failed)", { lookup: "failed", detail: geoError });
+  } else if (lastGeo) {
+    setHeadline(placeName(lastGeo), false);
+    setText($("sub"), lastGeo.countryName && lastGeo.locality ? `Closest named area: ${lastGeo.locality}` : "");
+    renderGrid("grid-geo", `Reverse geocoder (looked up ${geoTime}, every 10 seconds)`, lastGeo);
+    trackTrail(placeName(lastGeo), lastGeo.countryName ? lastGeo.locality : "");
+  }
+}
+
+// ---- Trail: one row per place, collapsing repeats; the current row's duration ticks upward. ----
+const MAX_TRAIL_ROWS = 20;
+let trail = [];  // [{ place, startedAt, localities, el, timeEl, locEl }], oldest first; last entry is "current"
+
+let backfilling = true;     // true while the last-30-minutes history is loading
+let pendingTrack = null;    // a live lookup that arrived during the backfill, applied right after
+
+function fmtApprox(ms) {
+  return "~" + Math.max(1, Math.round(ms / 60000)) + "m";
+}
+
+function fmtDuration(ms) {
+  const s = Math.round(ms / 1000);
+  const m = Math.floor(s / 60), r = s % 60;
+  return m > 0 ? `${m}m ${r}s` : `${r}s`;
+}
+
+function renderTrailRow(entry) {
+  const row = document.createElement("div");
+  row.className = "trailRow";
+  const p = document.createElement("div");
+  p.className = "p";
+  p.textContent = entry.place;
+  const c = document.createElement("span");
+  c.className = "c";
+  p.appendChild(c);
+  entry.cntEl = c;
+  const d = document.createElement("div");
+  d.className = "d";
+  const l = document.createElement("div");
+  l.className = "l";
+  row.append(p, d, l);
+  entry.el = row;
+  entry.timeEl = d;
+  entry.locEl = l;
+  return row;
+}
+
+function updateLocCount(entry) {
+  const names = Array.from(entry.localities);
+  const n = names.length;
+  entry.cntEl.textContent = n ? `${n} ${n === 1 ? "locality" : "localities"}` : "";
+  entry.locEl.textContent = names.join(", ");
+}
+
+function trackTrail(place, locality) {
+  if (backfilling) { pendingTrack = [place, locality]; return; }
+  const list = $("trailList");
+  const current = trail[trail.length - 1];
+
+  if (current && current.place === place) {
+    // Same place as before: keep ticking its duration, but count any new locality.
+    if (locality && !current.localities.has(locality)) {
+      current.localities.add(locality);
+    }
+    if (locality) current.lastLocality = locality;
+    updateLocCount(current);
+    return;
+  }
+
+  // Freeze the previous row's final duration, then drop the "current" highlight.
+  if (current) {
+    current.el.classList.remove("current");
+    current.done = true;
+    updateLocCount(current);
+    const spent = Date.now() - current.startedAt;
+    current.timeEl.textContent = current.approx ? fmtApprox(spent) : fmtDuration(spent);
+  }
+
+  const entry = { place, startedAt: Date.now(), localities: new Set(), lastLocality: "", el: null, timeEl: null, locEl: null, cntEl: null };
+  if (locality) { entry.localities.add(locality); entry.lastLocality = locality; }
+  const row = renderTrailRow(entry);
+  updateLocCount(entry);
+  row.classList.add("current");
+  list.prepend(row);   // newest first
+  trail.push(entry);
+
+  while (trail.length > MAX_TRAIL_ROWS) {
+    const old = trail.shift();
+    if (old.el) old.el.remove();
+  }
+}
+
+// Ticks the current row's duration every second, independent of the 1-minute geocode cadence.
+setInterval(() => {
+  const current = trail[trail.length - 1];
+  if (current && current.timeEl) {
+    const ms = Date.now() - current.startedAt;
+    current.timeEl.textContent = current.approx ? fmtApprox(ms) : fmtDuration(ms);
+  }
+}, 1000);
+
+// ---- Backfill: rebuild roughly the last hour of the trail when the page loads, then live lookups take over. ----
+const BACKFILL_MIN = 60, BACKFILL_STEP_MIN = 1;   // 60 points: six position requests of 10 (API allows 10 timestamps per request)
+
+async function geocodeAt(lat, lon) {
+  const url = `${GEO_URL}?latitude=${lat}&longitude=${lon}&localityLanguage=en&key=${GEO_KEY}`;
+  const res = await fetch(url);
+  let data = null;
+  try { data = await res.json(); } catch (_) {}
+  if (!res.ok || !data || ("status" in data && "description" in data)) throw new Error("geocode failed");
+  return data;
+}
+
+async function backfillTrail() {
+  try {
+    if (document.hidden) return;                       // do not spend quota on a hidden tab
+    const nowS = Math.floor(Date.now() / 1000);
+    const stamps = [];
+    for (let m = BACKFILL_MIN; m >= BACKFILL_STEP_MIN; m -= BACKFILL_STEP_MIN) stamps.push(nowS - m * 60);
+
+    // The API takes at most 10 timestamps per request, so split into chunks and fetch in order.
+    const chunks = [];
+    for (let i = 0; i < stamps.length; i += 10) chunks.push(stamps.slice(i, i + 10));
+    let pts = [];
+    for (let ci = 0; ci < chunks.length; ci++) {
+      const url = `${ISS_URL}/positions?timestamps=${chunks[ci].join(",")}&units=kilometers`;
+      let got = null;
+      for (let attempt = 0; attempt < 2 && !got; attempt++) {
+        if (ci > 0 || attempt > 0) await new Promise(r => setTimeout(r, attempt ? 1200 : 400));   // stay under the API's ~1 request/second
+        try {
+          const res = await fetch(url);
+          if (res.ok) got = await res.json();
+        } catch (_) {}
+      }
+      if (got) pts = pts.concat(got);                    // a chunk that fails twice is skipped, the rest still show
+    }
+    if (!pts.length) throw new Error("no history");
+    // Geocode in batches of 10 so 30 lookups do not hit the geocoder all at once.
+    const geos = [];
+    for (let i = 0; i < pts.length; i += 10) {
+      const batch = pts.slice(i, i + 10);
+      geos.push(...await Promise.all(batch.map((pt) => geocodeAt(pt.latitude, pt.longitude).catch(() => null))));
+    }
+
+    // Collapse consecutive samples in the same place into one run.
+    const runs = [];
+    pts.forEach((pt, i) => {
+      const g = geos[i];
+      if (!g) return;
+      const place = placeName(g);
+      const loc = g.countryName ? g.locality : "";
+      const last = runs[runs.length - 1];
+      if (last && last.place === place) { if (loc) last.localities.add(loc); }
+      else runs.push({ place, startTs: pt.timestamp * 1000, localities: new Set(loc ? [loc] : []) });
+    });
+
+    // Oldest first, each one prepended, so the newest ends up on top.
+    runs.forEach((r, i) => {
+      const entry = { place: r.place, startedAt: r.startTs, localities: r.localities, lastLocality: "",
+                      approx: true, el: null, timeEl: null, locEl: null, cntEl: null };
+      const row = renderTrailRow(entry);
+      updateLocCount(entry);
+      if (i === runs.length - 1) { row.classList.add("current"); entry.timeEl.textContent = fmtApprox(Date.now() - r.startTs); }
+      else entry.timeEl.textContent = fmtApprox(runs[i + 1].startTs - r.startTs);
+      $("trailList").prepend(row);
+      trail.push(entry);
+    });
+  } catch (e) {
+    // No history available: the trail simply starts empty, as before.
+  } finally {
+    backfilling = false;
+    if (pendingTrack) { const a = pendingTrack; pendingTrack = null; trackTrail(a[0], a[1]); }
+  }
+}
+
+async function lookupPlace(iss) {
+  if (geoBusy || document.hidden) return;  // skip hidden tabs to save quota
+  if (Date.now() - geoAt < GEO_EVERY_MS) return;
+  geoBusy = true;
+  geoAt = Date.now();                                  // failures also wait a full minute
+  try {
+    const url = `${GEO_URL}?latitude=${iss.latitude}&longitude=${iss.longitude}&localityLanguage=en&key=${GEO_KEY}`;
+    const res = await fetch(url);
+    let data = null;
+    try { data = await res.json(); } catch (_) {}
+    if (!res.ok || !data || ("status" in data && "description" in data)) {
+      const code = (data && data.status) || res.status;
+      const msg = (data && data.description) || res.statusText || "no details";
+      throw new Error(`${code}: ${msg}`);
+    }
+    lastGeo = data;
+    geoError = null;
+    geoTime = new Date().toLocaleTimeString();
+  } catch (e) {
+    geoError = e.message;                              // "Failed to fetch" usually means a network or CORS problem
+  } finally {
+    geoBusy = false;
+  }
+  showPlace();
+}
+
+// ---- ISS position: every 3 seconds ----
+async function update() {
+  try {
+    const res = await fetch(ISS_URL);
+    if (!res.ok) throw new Error(`ISS API returned ${res.status}`);
+    const iss = await res.json();
+
+    const km = iss.units === "kilometers";
+    setText($("alt"), `${iss.altitude.toFixed(0)} ${km ? "km" : "mi"}`);
+    setText($("vel"), `${Math.round(iss.velocity).toLocaleString()} ${km ? "km/h" : "mph"}`);
+    setText($("coords"), `${iss.latitude.toFixed(2)}, ${iss.longitude.toFixed(2)}`);
+    setText($("vis"), iss.visibility);
+    renderGrid("grid-iss", "ISS position API", iss);
+
+    $("pageTitle").classList.add("live");
+    $("status").className = "status";
+    setText($("status"), `Updated ${new Date().toLocaleTimeString()}`, false);
+
+    lookupPlace(iss);   // runs on its own clock; does not hold up the position refresh
+  } catch (e) {
+    $("pageTitle").classList.remove("live");
+    $("status").className = "status error";
+    setText($("status"), `Could not load data (${e.message}). Retrying in ${REFRESH_MS / 1000} seconds.`, false);
+  }
+}
+
+// Wait for each update to finish before scheduling the next.
+async function loop() {
+  await update();
+  setTimeout(loop, REFRESH_MS);
+}
+
+// ---- Crew aboard the ISS ----
+// Open Notify only serves plain http, which a https page can't call, so Apache proxies it at this same-origin path:
+//   ProxyPass /astros.json http://api.open-notify.org/astros.json   (and a matching ProxyPassReverse)
+const ASTROS_URL = "/astros.json";
+const CREW_REFRESH_MS = 30 * 60 * 1000;
+// Optional extras, filled in by hand later, keyed by the exact name Open Notify returns:
+//   "Name Here": { photo: "https://…jpg", agency: "NASA" }
+const CREW_INFO = {};
+
+function initials(name) {
+  return name.split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase();
+}
+
+const wikiCache = {};   // name -> { photo, blurb, url } or null, kept for the life of the page
+
+// Looks the person up on Wikipedia (https, CORS-enabled). Only trusted if the article describes an astronaut/cosmonaut.
+async function wikiLookup(name) {
+  if (name in wikiCache) return wikiCache[name];
+  let result = null;
+  try {
+    const res = await fetch("https://en.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(name.replace(/ /g, "_")));
+    if (res.ok) {
+      const d = await res.json();
+      const text = `${d.description || ""} ${d.extract || ""}`;
+      if (d.type === "standard" && /astronaut|cosmonaut|taikonaut|spationaut/i.test(text)) {
+        result = {
+          photo: d.thumbnail ? d.thumbnail.source : "",
+          blurb: d.description || "",
+          url: d.content_urls && d.content_urls.desktop ? d.content_urls.desktop.page : ""
+        };
+      }
+    }
+  } catch (e) { /* leave result null: the card keeps its initials */ }
+  wikiCache[name] = result;
+  return result;
+}
+
+function showPhoto(card, name, src) {
+  const old = card.querySelector(".crewPic");
+  const img = document.createElement("img");
+  img.className = "crewPic"; img.alt = name; img.loading = "lazy"; img.src = src;
+  img.onerror = () => { img.replaceWith(old); };   // broken image: go back to the initials circle
+  old.replaceWith(img);
+}
+
+async function enrichCard(card, name) {
+  const w = await wikiLookup(name);
+  if (!w) return;
+  const manual = CREW_INFO[name] || {};
+  if (w.photo && !manual.photo) showPhoto(card, name, w.photo);
+  if (w.blurb && !manual.agency) card.querySelector(".crewSub").textContent = w.blurb;
+  if (w.url) {
+    const n = card.querySelector(".crewName");
+    const link = document.createElement("a");
+    link.href = w.url; link.target = "_blank"; link.rel = "noopener"; link.title = "Photo and summary from Wikipedia";
+    link.textContent = name; n.textContent = ""; n.appendChild(link);
+  }
+}
+
+function renderCrew(names) {
+  const list = $("crewList");
+  list.textContent = "";
+  $("crewTitle").textContent = `Aboard the ISS (${names.length})`;
+  if (!names.length) {
+    const m = document.createElement("div"); m.className = "crewMsg"; m.textContent = "No crew listed right now.";
+    list.appendChild(m); return;
+  }
+  for (const name of names) {
+    const info = CREW_INFO[name] || {};
+    const card = document.createElement("div"); card.className = "crewCard";
+    let pic;
+    if (info.photo) { pic = document.createElement("img"); pic.src = info.photo; pic.alt = name; pic.loading = "lazy"; }
+    else { pic = document.createElement("div"); pic.textContent = initials(name); }
+    pic.className = "crewPic";
+    const txt = document.createElement("div");
+    const n = document.createElement("div"); n.className = "crewName"; n.textContent = name;
+    const sub = document.createElement("div"); sub.className = "crewSub"; sub.textContent = info.agency || "ISS crew";
+    txt.append(n, sub); card.append(pic, txt); list.appendChild(card);
+    enrichCard(card, name);   // photo and blurb arrive a moment later; the card is usable straight away
+  }
+}
+
+async function loadCrew() {
+  try {
+    const res = await fetch(ASTROS_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    renderCrew((data.people || []).filter(p => p.craft === "ISS").map(p => p.name));
+  } catch (e) {
+    if (!$("crewList").querySelector(".crewCard")) {
+      $("crewList").innerHTML = '<div class="crewMsg">Crew list unavailable right now.</div>';
+    }
+  }
+  setTimeout(loadCrew, CREW_REFRESH_MS);
+}
+
+loadCrew();
+backfillTrail();
+loop();
+</script>
+</body>
+</html>

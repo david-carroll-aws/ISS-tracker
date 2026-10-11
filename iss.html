@@ -210,6 +210,9 @@ const GEO_URL = "https://api.bigdatacloud.net/data/reverse-geocode";
 const GEO_KEY = "bdc_4f6f81906c1e4f688cb45b18c0873e5e";  // BigDataCloud free key (visible in page source)
 const REFRESH_MS = 3000;        // ISS position
 const GEO_EVERY_MS = 10000;     // place-name lookups (free quota is 50,000 per month)
+// Owner mode (localStorage.ownerMode = "true"): one place-name lookup on load, no repeats.
+let OWNER_MODE = false;
+try { OWNER_MODE = localStorage.getItem("ownerMode") === "true"; } catch (_) {}
 
 const $ = id => document.getElementById(id);
 function sparkle(el) {
@@ -464,6 +467,7 @@ async function backfillTrail() {
 
 async function lookupPlace(iss) {
   if (geoBusy || document.hidden) return;  // skip hidden tabs to save quota
+  if (OWNER_MODE && geoAt) return;         // owner mode: already looked up once
   if (Date.now() - geoAt < GEO_EVERY_MS) return;
   geoBusy = true;
   geoAt = Date.now();                                  // failures also wait a full minute

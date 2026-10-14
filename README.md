@@ -5,16 +5,14 @@ About every 90 minutes, the International Space Station completes another lap of
 The page shows where the station is right now, how fast and how high it's travelling, every country and ocean it has crossed in the last hour, and the astronauts on board.
 
 **Live tracker:** [davidcarroll.cloud/iss.html](https://davidcarroll.cloud/iss.html)
-**Dashboard:** [davidcarroll.cloud](https://davidcarroll.cloud)
-**Full write-up:** [What I Learned Building a Live ISS Tracker on AWS](YOUR_LINKEDIN_ARTICLE_URL)
 
-![ISS tracker screenshot](docs/screenshot.png)
+<img width="1031" height="579" alt="image" src="https://github.com/user-attachments/assets/8468ee36-5edb-4858-a0dc-e00b6f4b9be0" />
 
 This README covers how it works, the AWS services behind it, and the issues I encountered along the way.
 
 ## Architecture
 
-![Architecture diagram](docs/architecture.png)
+<img width="1488" height="916" alt="image" src="https://github.com/user-attachments/assets/882fcb11-4b12-4faf-b944-4e801d367651" />
 
 Here's the whole site at a glance. Apache is the single front door: it serves the pages and proxies the Flask app and the crew list. The browser calls three public APIs directly, and reaches the visit log through API Gateway.
 
@@ -27,7 +25,7 @@ The tracker turns raw orbital data into something you can read at a glance. Four
 - **A ground track.** A running list of every country, ocean and locality the ISS has passed over, with how long it spent in each. When the page loads it rebuilds the last 60 minutes at one-minute steps, then keeps adding live lookups roughly every 10 seconds.
 - **The crew aboard.** A column of the people on the station right now, with photos and a one-line description pulled in automatically.
 
-![Raw data panel](docs/raw-data-panel.png)
+<img width="540" height="497" alt="image" src="https://github.com/user-attachments/assets/3b688f51-c76c-4d13-8176-a0f323985e7a" />
 
 Below the stats, a raw-data panel shows exactly what the position and geocoding APIs returned on the latest refresh, so anyone curious can see what's behind the headline.
 

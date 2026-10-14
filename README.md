@@ -27,6 +27,8 @@ The tracker turns raw orbital data into something you can read at a glance. Four
 
 <img width="540" height="497" alt="image" src="https://github.com/user-attachments/assets/3b688f51-c76c-4d13-8176-a0f323985e7a" />
 
+<img width="495" height="343" alt="image" src="https://github.com/user-attachments/assets/77ac2146-9c8f-428b-a454-00090afa8575" />
+
 Below the stats, a raw-data panel shows exactly what the position and geocoding APIs returned on the latest refresh, so anyone curious can see what's behind the headline.
 
 ## How it's built on AWS

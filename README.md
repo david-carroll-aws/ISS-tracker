@@ -4,7 +4,7 @@ About every 90 minutes, the International Space Station completes another lap of
 
 **Live demo:** davidcarroll.cloud
 
-![Screenshot of the ISS tracker](docs/screenshot.png)
+<img width="1031" height="579" alt="image" src="https://github.com/user-attachments/assets/193805e5-3b9d-4348-b6b6-0a4140474aa9" />
 
 ## Features
 
